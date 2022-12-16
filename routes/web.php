@@ -22,7 +22,8 @@ use App\Http\Controllers\FilesRestController;
 //TODO:Inertia::render('edit')すると、app/guestレイアウトに差し込まれた状態に勝手になるが、どこで設定されている?
 //TODO:何かしらのルートを'dashboard'に設定しないと、'/profile'が開けなくなる?
 Route::get('/', function () {
-    return view('edit');
+    return Inertia::render('Edit',[
+    ]);
 })->middleware(['auth','verified'])->name('dashboard');
 
 /*Route::get('/dashboard', function () {

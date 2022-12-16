@@ -78,6 +78,7 @@ class FilesRestController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+    //TODO:取得できなかったら別のエラーコードで返した方が、処理が楽
     public function show($id)
     {
         $user = Auth::user();
