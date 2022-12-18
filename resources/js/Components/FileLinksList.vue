@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import FileLinkVue from './FileLink.vue';
+import FileData from '../FileData';
 
 const props = defineProps<{
-    client_files:{
-        fetched:Map<number,FetchedFileData>;
-        unfetched:Map<number,{
-            name:string;
-            renamed:boolean;
-        }>;
-        created:Map<number,CreatedFileData>;
-        deleted:Set<number>;
-    };
-    current_id:number|undefined;
+    files:Map<number,FileData>;
+    current_id:number;
 }>();
 
 //ファイル名が左クリックされたら、親にfile-clickイベントをemitし、fileidを渡す
@@ -26,15 +19,16 @@ const emit = defineEmits<{
 
 //FileLinkVueのための配列を作る
 const createNameEditedArray = computed(() => {
-    const arr:Array<{name:string,id:number,edited:boolean,opening:boolean}> = [];
-    for(const [id,{name,edited}] of props.client_files.fetched.entries()){
-        arr.push({name,id,edited,opening:(props.current_id === id)});
-    }
-    for(const [id,{name}] of props.client_files.unfetched.entries()){
-        arr.push({name,id,edited:false,opening:(props.current_id === id)});
-    }
-    for(const [id,{name}] of props.client_files.created.entries()){
-        arr.push({name,id,edited:true,opening:(props.current_id === id)});
+    const arr:Array<{name:string,id:number,displayname:string,opening:boolean}> = [];
+    for(const file of props.files.values()){
+        if(file.fileLinkDisplayName() !== undefined){
+            arr.push({
+                name:file.name,
+                id:file.id,
+                displayname:file.fileLinkDisplayName() as string,
+                opening:file.id === props.current_id,
+            })
+        }
     }
     //アルファベット順に並べる
     const comp = (a:{name:string},b:{name:string}) => {
