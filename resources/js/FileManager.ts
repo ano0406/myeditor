@@ -7,17 +7,16 @@ export default class FileManager{
     //id:-1は選択しているファイルがないときの番兵
     public files = new Map<number,FileData>().set(-1,new FileData(-1,'',this));
     public current_fileid = -1;
-    //現在スタックされている非同期読み込みの数
-    public _syncing_filenum = 0;
-    //操作をブロックする必要があるか否かはこのcomputedメソッドで判断する
-    //TODO:isFileSyncingがundefined扱いになっており、syncoverlayerの表示切り替えに使えない
-    public isFileSyncing = () => {
-        if(this._syncing_filenum > 0){
-            return true;
-        }
-        return false;
-        return this._syncing_filenum > 0;
-    };
+    //ファイルを同期中か否か(Edit.vueで参照し同期中の表示を出す)
+    private _is_syncing = false;
+    public get is_syncing(){
+        return this._is_syncing;
+    }
+    //ファイルの同期中にエラーが発生したか否か(Edit.vueで参照しエラー画面を出す)
+    private _error_occured = false;
+    public get error_occured(){
+        return this._error_occured;
+    }
     public getCurrentFile(){
         return this.files.get(this.current_fileid) as FileData;
     };
@@ -34,11 +33,19 @@ export default class FileManager{
     }
     //ユーザー操作をブロックし、サーバーからファイルを取り出し、client_filesをセットする
     public fetchAllandBlock(){
+        this._is_syncing = true;
         this.sendAjaxGet('/rest',(res:Array<{id:number,name:string}>) => {
             for(const {id,name} of res){
                 this.files.set(id,new UnfetchedFileData(id,name,this));
                 this.used_filenames.add(name);
             }
+        })
+        .catch((errdata) => {
+            this._error_occured = true;
+            console.log(errdata);
+        })
+        .finally(() => {
+            this._is_syncing = false;
         });
     }
     public changeFileData(id:number,newfile:FileData){
@@ -50,8 +57,24 @@ export default class FileManager{
     public changeCurrentFileTo(id:number){
         if(this.files.has(id)){
             const file = this.files.get(id) as FileData;
-            file.onSelect();
-            this.current_fileid = id;
+            const fileret = file.onSelect();
+            if(fileret !== undefined){
+                this.current_fileid = -1;
+                this._is_syncing = true;
+                fileret
+                .then(() => {
+                    this.current_fileid = id;
+                })
+                .catch((errdata) => {
+                    this._error_occured = true;
+                    console.log(errdata);
+                })
+                .finally(() => {
+                    this._is_syncing = false;
+                });
+            }else{
+                this.current_fileid = id;
+            }
         }
     }
     public onChangeFileName(id:number){
@@ -107,50 +130,67 @@ export default class FileManager{
         }
     }
     public synchronize(){
+        const promise_arr = new Array<Promise<void>>();
         for(const file of this.files.values()){
-            file.onSync();
+            const fileret = file.onSync();
+            if(fileret !== undefined){
+                promise_arr.push(fileret);
+            }
+        }
+        if(promise_arr.length > 0){
+            this._is_syncing = true;
+            Promise.all(promise_arr)
+            .catch((errdata) => {
+                this._error_occured = true;
+                console.log(errdata);
+            })
+            .finally(() => {
+                this._is_syncing = false;
+            });
         }
     }
 
-    //指定urlにgetを送り、成功時ResponseData型のレスポンスを受け取るコールバックを実行する
-    //完了までユーザー入力をブロックする(isSyncronisingをtrueにする)
+    //「指定urlにgetを送り、成功時ResponseData型のレスポンスを受け取るコールバックを実行する」というPromiseを返す
+    //全promiseが完了するまで、ユーザー入力はブロックされる
     public sendAjaxGet<ResponseData>(url:string,callback:(res:ResponseData) => void){
-        this._syncing_filenum++;
-        $.ajax({
-            headers:{
-                'X-CSRF-TOKEN':this.csrf_token,
-            },
-            url,
-            type:'get',
-            timeout:3000,
-        }).done((res:ResponseData) => {
-            callback(res);
-            this._syncing_filenum--;
-        }).fail((res) => {
-            //TODO:alertでエラーメッセージを出すと、セッションが切れた時alertを無限に出されて面倒
-            //alert('サーバーからのデータ取得に失敗しました　再読み込みしてください');
+        return new Promise<void>((resolve,rejected) => {
+            $.ajax({
+                headers:{
+                    'X-CSRF-TOKEN':this.csrf_token,
+                },
+                url,
+                type:'get',
+                timeout:3000,
+            }).done((res:ResponseData) => {
+                callback(res);
+                resolve();
+            }).fail((res) => {
+                rejected(res.responseText);
+                //TODO:alertでエラーメッセージを出すと、セッションが切れた時alertを無限に出されて面倒
+                //alert('サーバーからのデータ取得に失敗しました　再読み込みしてください');
+            });
         });
     }
-    //指定urlにRequestData型のデータを付与したリクエストを送り、成功時ResponseData型のレスポンスを受け取るコールバックを実行する
+    //「指定urlにRequestData型のデータを付与したリクエストを送り、成功時ResponseData型のレスポンスを受け取るコールバックを実行する」というpromiseを返す
     //完了までユーザー入力をブロックする(isSyncronisingをtrueにする)
     public sendAjaxData<RequestData,ResponseData>(url:string,reqtype:string,reqdata:RequestData,callback:(res:ResponseData) => void){
-        this._syncing_filenum++;
-        $.ajax({
-            headers:{
-                'X-CSRF-TOKEN':this.csrf_token,
-                'Content-Type':'application/json',
-            },
-            url,
-            type:reqtype,
-            dataType:'json',
-            data:JSON.stringify(reqdata),
-            timeout:3000,
-        }).done((res:ResponseData) => {
-            callback(res);
-            this._syncing_filenum--;
-        }).fail((data) => {
-            console.log(data);
-            console.log(JSON.parse(data.responseText));
+        return new Promise<void>((resolve,rejected) => {
+            $.ajax({
+                headers:{
+                    'X-CSRF-TOKEN':this.csrf_token,
+                    'Content-Type':'application/json',
+                },
+                url,
+                type:reqtype,
+                dataType:'json',
+                data:JSON.stringify(reqdata),
+                timeout:3000,
+            }).done((res:ResponseData) => {
+                callback(res);
+                resolve();
+            }).fail((data) => {
+                rejected(data.responseText);
+            });
         });
     }
 }

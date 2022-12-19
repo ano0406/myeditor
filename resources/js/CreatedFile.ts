@@ -25,14 +25,15 @@ export default class CreatedFileData extends FileData{
     public fileLinkDisplayName():string|undefined{
         return `+${this._name}`;
     }
-    public onSelect():void{
+    public onSelect(){
+        return undefined;
     }
     public onDelete(): void {
         this.filemanager.deleteFileData(this.id);
     }
-    public onSync(): void {
-        this.filemanager.sendAjaxData<{name:string,text:string},{success:boolean,id:number}>('/rest','post',{name:this._name,text:this._text},
-        (res)=>{
+    public onSync(){
+        return this.filemanager.sendAjaxData<{name:string,text:string},{success:boolean,id:number}>(
+            '/rest','post',{name:this._name,text:this._text},(res)=>{
             if(res.success){
                 this.filemanager.changeFileData(res.id,new FetchedFileData(res.id,this._name,this._text,this.filemanager));
                 if(this.filemanager.current_fileid === this.id){

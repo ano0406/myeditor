@@ -22,7 +22,7 @@ export default class UnfetchedFileData extends FileData{
         return this._name;
     }
     public onSelect(){
-        this.filemanager.sendAjaxGet<{name:string,text:string}>(`/rest/${this.id}`,({name,text}) => {
+        return this.filemanager.sendAjaxGet<{name:string,text:string}>(`/rest/${this.id}`,({name,text}) => {
             this.filemanager.changeFileData(this.id,new FetchedFileData(
                 this.id,this.name,text,this.filemanager,this.renamed
             ));
@@ -33,11 +33,13 @@ export default class UnfetchedFileData extends FileData{
     }
     public onSync(){
         if(this.renamed){
-            this.filemanager.sendAjaxData<{name:string},{success:boolean}>(`/rest/${this.id}`,'put',{name:this._name},(res)=>{
+            return this.filemanager.sendAjaxData<{name:string},{success:boolean}>(`/rest/${this.id}`,'put',{name:this._name},(res)=>{
                 if(res.success){
                     this.renamed = false;
                 }
             });
+        }else{
+            return undefined;
         }
     }
 }

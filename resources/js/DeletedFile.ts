@@ -6,7 +6,7 @@ export default class DeletedFile extends FileData{
         super(id,name,filemanager);
     }
     public onSync(){
-        this.filemanager.sendAjaxData<{},{success:boolean}>(`/rest/${this.id}`,'delete',{},(res) => {
+        return this.filemanager.sendAjaxData<{},{success:boolean}>(`/rest/${this.id}`,'delete',{},(res) => {
             if(res.success){
                 this.filemanager.deleteFileData(this.id);
             }

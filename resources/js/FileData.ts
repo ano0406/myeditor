@@ -29,12 +29,18 @@ export default class FileData{
         return undefined;
     }
     //このファイル名がクリックされた場合の処理
-    public onSelect():void{
+    //非同期処理を行いたい場合、それを行うPromiseを返す　特にajax通信を行いたい場合、filemanager.SendAjaxGet/SendAjaxDataに処理を指定し関数の返り値をそのまま返せば良い
+    //非同期処理を行わない場合、undefinedを返す
+    public onSelect():undefined|Promise<void>{
+        return undefined;
     }
     //このファイルが削除されるときの処理
     public onDelete(){
     }
     //このファイルを同期する
-    public onSync(){
+    //非同期処理を行いたい場合、それを行うPromiseを返す　特にajax通信を行いたい場合、filemanager.SendAjaxGet/SendAjaxDataに処理を指定し関数の返り値をそのまま返せば良い
+    //非同期処理を行わない場合、undefinedを返す
+    public onSync():undefined|Promise<void>{
+        return undefined;
     }
 }

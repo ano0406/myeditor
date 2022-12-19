@@ -35,7 +35,7 @@ export default class FetchedFileData extends FileData{
     public onDelete(): void {
         this.filemanager.changeFileData(this.id,new DeletedFile(this.id,this._name,this.filemanager));
     }
-    public onSync(): void {
+    public onSync(){
         if(this.edited || this.renamed){
             const data:{name?:string,text?:string} = {};
             if(this.edited){
@@ -44,12 +44,14 @@ export default class FetchedFileData extends FileData{
             if(this.renamed){
                 data.name = this.name;
             }
-            this.filemanager.sendAjaxData<{name?:string,text?:string},{success:boolean}>(`/rest/${this.id}`,'put',data,(res)=>{
+            return this.filemanager.sendAjaxData<{name?:string,text?:string},{success:boolean}>(`/rest/${this.id}`,'put',data,(res)=>{
                 if(res.success){
                     this.edited = false;
                     this.renamed = false;
                 }
             });
+        }else{
+            return undefined;
         }
     }
 }

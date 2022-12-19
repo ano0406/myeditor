@@ -100,8 +100,9 @@ function synchronize(){
 
 <template>
     <Head title="編集"/>
-    <div id="syncoverlayer" v-if="filemanager._syncing_filenum > 0">
-        <p class="position-absolute top-50 start-50 translate-middle">同期中...</p>
+    <div id="syncoverlayer" v-if="filemanager.is_syncing || filemanager.error_occured">
+        <p v-if="filemanager.error_occured" class="position-absolute top-50 start-50 translate-middle">エラーが発生しました<br/>再読み込みを行なってください</p>
+        <p v-if="filemanager.is_syncing" class="position-absolute top-50 start-50 translate-middle">同期中...</p>
     </div>
     <ContextMenuVue :items="contextmenu_props.items" :clientx="contextmenu_props.clientx" :clienty="contextmenu_props.clienty"/>
     <MyeditorLayout @both-click="bodyclick_handler">
