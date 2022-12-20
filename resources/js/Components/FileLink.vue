@@ -1,8 +1,8 @@
 <script setup lang="ts">
 
 const props = defineProps<{
-    id:number;
-    displayname:string;
+    data:FileLinkData;
+    //このファイルを編集中か否か
     opening:boolean;
 }>();
 
@@ -14,14 +14,14 @@ const emit = defineEmits<{
 }>();
 
 const filerightclick_handler = (e:MouseEvent) => {
-    emit('file-right-click',props.id,e.clientX,e.clientY);
+    emit('file-right-click',props.data.id,e.clientX,e.clientY);
 };
 </script>
 
 <template>
-    <li class="container fs-6" @click="() => emit('file-click',props.id)"
+    <li class="container fs-6" @click="() => emit('file-click',props.data.id)"
      @contextmenu.stop.prevent="filerightclick_handler"
-     :style="{'color':(props.opening?'red':'black')}" :key="displayname">
-     {{displayname}}
+     :style="{'color':(props.opening?'red':'black')}" :key="data.id">
+     {{data.itemname}}
      </li>
 </template>

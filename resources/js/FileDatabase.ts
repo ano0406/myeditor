@@ -5,8 +5,7 @@ import { getCookie,setCookie,removeCookie } from 'typescript-cookie';
 
 //ファイルのデータの管理、サーバーとのやり取りを担う
 export default class FileDatabase{
-    //id:-1は選択しているファイルがないときの番兵
-    public files = new Map<number,FileData>().set(-1,new FileData(-1,'',this));
+//public:
     //ファイルを同期中か否か(Edit.vueで参照し同期中の表示を出す)
     private _is_syncing = false;
     public get is_syncing(){
@@ -17,45 +16,17 @@ export default class FileDatabase{
     public get error_occured(){
         return this._error_occured;
     }
-    /*public getCurrentFile(){
-        return this.files.get(this.current_fileid) as FileData;
-    };*/
-    //リネーム時にファイル名被りを避ける
-    private used_filenames = new Set<string>();
-    //作成したファイルに対して割り当てる、未使用のファイルid
-    private unused_fileid = -2;
-    private csrf_token:string = '';
     //Cookieに保存されていた未同期の内容
-    public cookied_datas = new Array<CookiedFileData>();
-    //今cookieにデータを保存しているファイルidの集合
-    private cookieing_files = new Set<number>();
+    private _cookied_datas = new Array<CookiedFileData>();
+    public get cookied_datas(){
+        return this._cookied_datas as ReadonlyArray<CookiedFileData>;
+    }
     constructor(){
     }
-    //onMountedで設定する必要があるため
-    public setCSRFToken(csrf_token:string){
+    //Edit.vue読み込み時の遅延初期化
+    public onMounted(csrf_token:string){
         this.csrf_token = csrf_token;
-    }
-    //ユーザー操作をブロックし、サーバーからファイルを取り出し、client_filesをセットする
-    public fetchAllandBlock(){
-        this._is_syncing = true;
-        this.sendAjaxGet<Array<{id:number,name:string}>>('/rest')
-        .then(res => {
-            for(const {id,name} of res){
-                this.files.set(id,new NormalFileData(id,name,undefined,this));
-                this.used_filenames.add(name);
-            }
-            const cookied_ids_org = getCookie('cookieing_files');
-            if(cookied_ids_org !== undefined){
-                const cookied_ids = cookied_ids_org.split(',').map(v => Number(v));
-                for(const id of cookied_ids){
-                    const data_org = getCookie(id.toString()) as string;
-                    this.cookied_datas.push(JSON.parse(data_org));
-                    removeCookie(id.toString());
-                }
-                removeCookie('cookieing_files');
-            }
-            this._is_syncing = false;
-        });
+        this.fetchAllandBlock();
     }
     public getFileText(id:number):string|undefined{
         return this.files.get(id)?.text;
@@ -63,8 +34,20 @@ export default class FileDatabase{
     public getFileName(id:number):string|undefined{
         return this.files.get(id)?.name;
     }
-    public onTextareaChange(id:number,text:string){
-        const file = this.files.get(id);
+    public getFileLinksDatas(){
+        const arr = new Array<FileLinkData>();
+        for(const file of this.files.values()){
+            if(file.fileLinkDisplayName() !== undefined)
+            arr.push({
+                id:file.id,
+                itemname:file.fileLinkDisplayName() as string,
+                name:file.name,
+            });
+        }
+        return arr;
+    }
+    public onTextareaChange(edited_file:number,text:string){
+        const file = this.files.get(edited_file);
         if(file !== undefined){
             file.onChange(text);
         }
@@ -101,16 +84,16 @@ export default class FileDatabase{
         this.used_filenames.add(name);
         return true;
     }
-    public deleteFile(del:number){
-        if(!this.files.has(del)){
+    public deleteFile(id:number){
+        if(!this.files.has(id)){
             return;
         }
-        const file = this.files.get(del) as FileData;
+        const file = this.files.get(id) as FileData;
         const newfile = file.onDelete();
         if(newfile === undefined){
-            this.files.delete(del);
+            this.files.delete(id);
         }else{
-            this.files.set(del,newfile);
+            this.files.set(id,newfile);
         }
         this.used_filenames.delete(file.name);
     }
@@ -120,7 +103,7 @@ export default class FileDatabase{
         if(this.used_filenames.has(name)){
             return false;
         }
-        this.files.set(this.unused_fileid,new CreatedFileData(this.unused_fileid,name,this));
+        this.files.set(this.unused_fileid,new CreatedFileData(this.unused_fileid,name,this.getIOInterface()));
         this.unused_fileid--;
         return true;
     }
@@ -145,14 +128,44 @@ export default class FileDatabase{
                      this.files.set(f.id,f);
                 }
             }
-            this.cookied_datas.splice(0);
+            this._cookied_datas.splice(0);
             this._is_syncing = false;
         });
     }
-
+//private:
+    private files = new Map<number,FileData>();
+    //リネーム時にファイル名被りを避ける
+    private used_filenames = new Set<string>();
+    //作成したファイルに対して割り当てる、未使用のファイルid
+    private unused_fileid = -1;
+    private csrf_token:string = '';
+    //今cookieにデータを保存しているファイルidの集合
+    private cookieing_files = new Set<number>();
+    //ユーザー操作をブロックし、サーバーからファイルを取り出し、client_filesをセットする
+    private fetchAllandBlock(){
+        this._is_syncing = true;
+        this.sendAjaxGet<Array<{id:number,name:string}>>('/rest')
+        .then(res => {
+            for(const {id,name} of res){
+                this.files.set(id,new NormalFileData(id,name,undefined,this.getIOInterface()));
+                this.used_filenames.add(name);
+            }
+            const cookied_ids_org = getCookie('cookieing_files');
+            if(cookied_ids_org !== undefined){
+                const cookied_ids = cookied_ids_org.split(',').map(v => Number(v));
+                for(const id of cookied_ids){
+                    const data_org = getCookie(id.toString()) as string;
+                    this._cookied_datas.push(JSON.parse(data_org));
+                    removeCookie(id.toString());
+                }
+                removeCookie('cookieing_files');
+            }
+            this._is_syncing = false;
+        });
+    }
     //「指定urlにgetを送り、成功時ResponseData型のレスポンスを受け取るresolveを実行する」というPromiseを返す
     //全promiseが完了するまで、ユーザー入力はブロックされる
-    public sendAjaxGet<ResponseData>(url:string){
+    private sendAjaxGet<ResponseData>(url:string){
         return new Promise<ResponseData>((resolve) => {
             $.ajax({
                 headers:{
@@ -171,7 +184,7 @@ export default class FileDatabase{
     }
     //「指定urlにRequestData型のデータを付与したリクエストを送り、成功時ResponseData型のレスポンスを受け取るコールバックを実行する」というpromiseを返す
     //完了までユーザー入力をブロックする(isSyncronisingをtrueにする)
-    public sendAjaxData<RequestData,ResponseData>(url:string,reqtype:string,reqdata:RequestData){
+    private sendAjaxData<RequestData,ResponseData>(url:string,reqtype:string,reqdata:RequestData){
         return new Promise<ResponseData>((resolve) => {
             $.ajax({
                 headers:{
@@ -192,7 +205,7 @@ export default class FileDatabase{
         });
     }
     //このidをキーとして、CookieにCookiedFileDataを保存
-    public saveCookie(id:number,data:CookiedFileData){
+    private saveCookie(id:number,data:CookiedFileData){
         if(!this.cookieing_files.has(id)){
             this.cookieing_files.add(id);
             setCookie('cookieing_files',Array.from(this.cookieing_files).toString(),{expires:7});
@@ -201,7 +214,7 @@ export default class FileDatabase{
         setCookie(id.toString(),JSON.stringify(data),{expires:7});
     }
     //このidをキーとしてCookieに保存していた情報を削除　
-    public removeCookie(id:number){
+    private removeCookie(id:number){
         if(this.cookieing_files.has(id)){
             removeCookie(id.toString());
             this.cookieing_files.delete(id);
@@ -210,6 +223,16 @@ export default class FileDatabase{
             }else{
                 removeCookie('cookieing_files');
             }
+        }
+    }
+    //FileDataクラスのインスタンスを作成する際、この関数でIOInterfaceオブジェクトを作成する
+    //obj={sendAjaxGet:this.sendAjaxGet,sendAjaxData:this.sendAjaxData,...}をFileDataに渡すと、FileDataでobjの関数を呼び出した際、関数定義のthisがobjと解釈される
+    private getIOInterface(){
+        return{
+            sendAjaxGet:<ResponseData>(url:string) => this.sendAjaxGet.call<FileDatabase,[string],Promise<ResponseData>>(this,url),
+            sendAjaxData:<RequestData,ResponseData>(url:string,reqtype:string,reqdata:RequestData) => this.sendAjaxData.call<FileDatabase,[string,string,RequestData],Promise<ResponseData>>(this,url,reqtype,reqdata),
+            saveCookie:(id:number,data:CookiedFileData) => this.saveCookie.call(this,id,data),
+            removeCookie:(id:number) => this.removeCookie.call(this,id),
         }
     }
 }

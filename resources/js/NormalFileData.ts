@@ -1,6 +1,5 @@
 import DeletedFile from "./DeletedFile";
 import FileData from "./FileData";
-import FileDatabase from "./FileDatabase";
 
 //サーバーに既に存在し、ローカルでもリネームと内容編集のみが行われたファイル
 export default class NormalFileData extends FileData{
@@ -10,22 +9,19 @@ export default class NormalFileData extends FileData{
     }
     private edited = false;
     private renamed = false;
-    constructor(id:number,name:string,text:string|undefined,filemanager:FileDatabase){
-        super(id,name,filemanager);
+    constructor(id:number,name:string,text:string|undefined,io:IOInterface){
+        super(id,name,io);
         this._text = text;
     }
     public get name(){
         return this._name;
-    }
-    public textareaDisable(){
-        return false;
     }
     public fileLinkDisplayName(){
         return (this.edited?'*':'')+this._name+(this.renamed?' (名前変更済み)':'');
     }
     public onSelect(){
         if(this._text === undefined){
-            return this.filedatabase.sendAjaxGet<{name:string,text:string}>(`/rest/${this.id}`)
+            return this.io.sendAjaxGet<{name:string,text:string}>(`/rest/${this.id}`)
             .then(res => {
                 this._text = res.text;
             });
@@ -36,30 +32,15 @@ export default class NormalFileData extends FileData{
     public onChange(input:string){
         this.edited = true;
         this._text = input;
-        this.filedatabase.saveCookie(this.id,{
-            itemname:`編集:${this.name}`,
-            openable:true,
-            text:this._text,
-        });
+        this.updateCookie();
     }
     public onRename(name: string){
         this.renamed = true;
         this._name = name;
-        if(!this.edited){
-            this.filedatabase.saveCookie(this.id,{
-                itemname:`編集:${this.name}`,
-                openable:false,
-            });
-        }else{
-            this.filedatabase.saveCookie(this.id,{
-                itemname:`編集:${this.name}`,
-                openable:true,
-                text:this._text,
-            });
-        }
+        this.updateCookie();
     }
     public onDelete(){
-        return new DeletedFile(this.id,this.name,this.filedatabase);
+        return new DeletedFile(this.id,this.name,this.io);
     }
     public onSync(){
         if(this.edited || this.renamed){
@@ -70,15 +51,35 @@ export default class NormalFileData extends FileData{
             if(this.renamed){
                 data.name = this.name;
             }
-            return this.filedatabase.sendAjaxData<{name?:string,text?:string},{success:boolean}>(`/rest/${this.id}`,'put',data)
+            return this.io.sendAjaxData<{name?:string,text?:string},{success:boolean}>(`/rest/${this.id}`,'put',data)
             .then(_ => {
                 this.edited = false;
                 this.renamed = false;
-                this.filedatabase.removeCookie(this.id);
+                this.io.removeCookie(this.id);
                 return this;
             });
         }else{
             return undefined;
+        }
+    }
+    private updateCookie(){
+        if(this.renamed && this.edited){
+            this.io.saveCookie(this.id,{
+                itemname:`改名と編集:${this.name}`,
+                openable:true,
+                text:this._text,
+            });
+        }else if(this.renamed && !this.edited){
+            this.io.saveCookie(this.id,{
+                itemname:`改名:${this.name}`,
+                openable:false,
+            });
+        }else if(!this.renamed && this.edited){
+            this.io.saveCookie(this.id,{
+                itemname:`編集:${this.name}`,
+                openable:true,
+                text:this._text,
+            });
         }
     }
 }

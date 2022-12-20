@@ -1,18 +1,17 @@
 import FileData from "./FileData";
-import FileDatabase from "./FileDatabase";
 
 export default class DeletedFile extends FileData{
-    constructor(id:number,name:string,filedatabase:FileDatabase){
-        super(id,name,filedatabase);
-        filedatabase.saveCookie(id,{
+    constructor(id:number,name:string,io:IOInterface){
+        super(id,name,io);
+        io.saveCookie(id,{
             itemname:`削除:${name}`,
             openable:false,
         });
     }
     public onSync(){
-        return this.filedatabase.sendAjaxData<{},{success:boolean}>(`/rest/${this.id}`,'delete',{})
+        return this.io.sendAjaxData<{},{success:boolean}>(`/rest/${this.id}`,'delete',{})
         .then(_ => {
-            this.filedatabase.removeCookie(this.id);
+            this.io.removeCookie(this.id);
             return undefined;
         });
     }

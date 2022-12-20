@@ -1,5 +1,3 @@
-import FileDatabase from "./FileDatabase";
-
 export default class FileData{
     public readonly id:number;
     //ファイルが選択されたとき、このsetter/getterを介してtextareaに表示する
@@ -10,15 +8,11 @@ export default class FileData{
     public get name(){
         return this._name;
     }
-    protected filedatabase:FileDatabase;
-    constructor(id:number,name:string,filedatabase:FileDatabase){
+    protected io:IOInterface;
+    constructor(id:number,name:string,io:IOInterface){
         this.id = id;
         this._name = name;
-        this.filedatabase = filedatabase;
-    }
-    //このファイルを開いているとき、textareaを編集不可にするか
-    public textareaDisable(){
-        return true;
+        this.io = io;
     }
     //FileLinkでの表示名を返す 表示しないならばundefinedを返す
     public fileLinkDisplayName():string|undefined{
