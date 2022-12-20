@@ -8,22 +8,14 @@ export default class NormalFileData extends FileData{
     public get text(){
         return (this._text !== undefined?this._text:'');
     }
-    public set text(t:string){
-        this.edited = true;
-        this._text = t;
-    }
     private edited = false;
-    private renamed = false;;
+    private renamed = false;
     constructor(id:number,name:string,text:string|undefined,filemanager:FileDatabase){
         super(id,name,filemanager);
         this._text = text;
     }
     public get name(){
         return this._name;
-    }
-    public set name(newname:string){
-        this.renamed = true;
-        this._name = newname;
     }
     public textareaDisable(){
         return false;
@@ -39,6 +31,31 @@ export default class NormalFileData extends FileData{
             });
         }else{
             return undefined;
+        }
+    }
+    public onChange(input:string){
+        this.edited = true;
+        this._text = input;
+        this.filedatabase.saveCookie(this.id,{
+            itemname:`編集:${this.name}`,
+            openable:true,
+            text:this._text,
+        });
+    }
+    public onRename(name: string){
+        this.renamed = true;
+        this._name = name;
+        if(!this.edited){
+            this.filedatabase.saveCookie(this.id,{
+                itemname:`編集:${this.name}`,
+                openable:false,
+            });
+        }else{
+            this.filedatabase.saveCookie(this.id,{
+                itemname:`編集:${this.name}`,
+                openable:true,
+                text:this._text,
+            });
         }
     }
     public onDelete(){
@@ -57,6 +74,7 @@ export default class NormalFileData extends FileData{
             .then(_ => {
                 this.edited = false;
                 this.renamed = false;
+                this.filedatabase.removeCookie(this.id);
                 return this;
             });
         }else{

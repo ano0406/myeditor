@@ -1,6 +1,7 @@
 import CreatedFileData from "./CreatedFile";
 import FileData from "./FileData";
 import NormalFileData from "./NormalFileData";
+import { getCookie,setCookie,removeCookie } from 'typescript-cookie';
 
 //ファイルのデータの管理、サーバーとのやり取りを担う
 export default class FileDatabase{
@@ -24,6 +25,10 @@ export default class FileDatabase{
     //作成したファイルに対して割り当てる、未使用のファイルid
     private unused_fileid = -2;
     private csrf_token:string = '';
+    //Cookieに保存されていた未同期の内容
+    public cookied_datas = new Array<CookiedFileData>();
+    //今cookieにデータを保存しているファイルidの集合
+    private cookieing_files = new Set<number>();
     constructor(){
     }
     //onMountedで設定する必要があるため
@@ -35,11 +40,21 @@ export default class FileDatabase{
         this._is_syncing = true;
         this.sendAjaxGet<Array<{id:number,name:string}>>('/rest')
         .then(res => {
-            this._is_syncing = false;
             for(const {id,name} of res){
                 this.files.set(id,new NormalFileData(id,name,undefined,this));
                 this.used_filenames.add(name);
             }
+            const cookied_ids_org = getCookie('cookieing_files');
+            if(cookied_ids_org !== undefined){
+                const cookied_ids = cookied_ids_org.split(',').map(v => Number(v));
+                for(const id of cookied_ids){
+                    const data_org = getCookie(id.toString()) as string;
+                    this.cookied_datas.push(JSON.parse(data_org));
+                    removeCookie(id.toString());
+                }
+                removeCookie('cookieing_files');
+            }
+            this._is_syncing = false;
         });
     }
     public getFileText(id:number):string|undefined{
@@ -51,7 +66,7 @@ export default class FileDatabase{
     public onTextareaChange(id:number,text:string){
         const file = this.files.get(id);
         if(file !== undefined){
-            file.text = text;
+            file.onChange(text);
         }
     }
     //ファイル名がクリックされ選択されたときに呼び出す
@@ -82,7 +97,7 @@ export default class FileDatabase{
             return false;
         }
         this.used_filenames.delete(file.name);
-        file.name = name;
+        file.onRename(name);
         this.used_filenames.add(name);
         return true;
     }
@@ -109,7 +124,8 @@ export default class FileDatabase{
         this.unused_fileid--;
         return true;
     }
-    public synchronize(){
+    //ファイル全体の同期を行う
+    public synchronize():Promise<void>{
         const fileid_arr = new Array<number>;
         const promise_arr = new Array<Promise<undefined|FileData>>();
         for(const file of this.files.values()){
@@ -119,20 +135,19 @@ export default class FileDatabase{
                 promise_arr.push(fileret);
             }
         }
-        if(promise_arr.length > 0){
-            this._is_syncing = true;
-            Promise.all(promise_arr)
-            .then(arr => {
-                for(let i = 0;i < arr.length;i++){
-                    this.files.delete(fileid_arr[i]);
-                    if(arr[i] !== undefined){
-                        const f = arr[i] as FileData;
-                        this.files.set(f.id,f);
-                    }
+        this._is_syncing = true;
+        return Promise.all(promise_arr)
+        .then(arr => {
+            for(let i = 0;i < arr.length;i++){
+                this.files.delete(fileid_arr[i]);
+                if(arr[i] !== undefined){
+                    const f = arr[i] as FileData;
+                     this.files.set(f.id,f);
                 }
-                this._is_syncing = false;
-            })
-        }
+            }
+            this.cookied_datas.splice(0);
+            this._is_syncing = false;
+        });
     }
 
     //「指定urlにgetを送り、成功時ResponseData型のレスポンスを受け取るresolveを実行する」というPromiseを返す
@@ -175,5 +190,26 @@ export default class FileDatabase{
                 console.log(data.responseText);
             });
         });
+    }
+    //このidをキーとして、CookieにCookiedFileDataを保存
+    public saveCookie(id:number,data:CookiedFileData){
+        if(!this.cookieing_files.has(id)){
+            this.cookieing_files.add(id);
+            setCookie('cookieing_files',Array.from(this.cookieing_files).toString(),{expires:7});
+        }
+        //深く考えていないが保存期間は7日
+        setCookie(id.toString(),JSON.stringify(data),{expires:7});
+    }
+    //このidをキーとしてCookieに保存していた情報を削除　
+    public removeCookie(id:number){
+        if(this.cookieing_files.has(id)){
+            removeCookie(id.toString());
+            this.cookieing_files.delete(id);
+            if(this.cookieing_files.size > 0){
+                setCookie('cookieing_files',Array.from(this.cookieing_files).toString(),{expires:7});
+            }else{
+                removeCookie('cookieing_files');
+            }
+        }
     }
 }

@@ -2,17 +2,13 @@ import FileDatabase from "./FileDatabase";
 
 export default class FileData{
     public readonly id:number;
-    //ファイルが選択されたとき、このsetter/getterを介してtextareaに表示・変更する
+    //ファイルが選択されたとき、このsetter/getterを介してtextareaに表示する
     public get text():string{
         return '';
-    }
-    public set text(_:string){
     }
     protected _name:string;
     public get name(){
         return this._name;
-    }
-    public set name(_:string){
     }
     protected filedatabase:FileDatabase;
     constructor(id:number,name:string,filedatabase:FileDatabase){
@@ -33,6 +29,12 @@ export default class FileData{
     //非同期処理を行わない場合、undefinedを返す
     public onSelect():undefined|Promise<void>{
         return undefined;
+    }
+    //このファイルを開いている際、textareaのonChangeイベントが発生したら呼び出される
+    public onChange(input:string){
+    }
+    public onRename(name:string){
+        this._name = name;
     }
     //このファイルが削除されるときの処理
     //filedatabase.files[id]の値には、この関数の返り値がセットされる undefinedならば削除

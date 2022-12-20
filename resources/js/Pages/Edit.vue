@@ -6,9 +6,7 @@ import { Link } from '@inertiajs/inertia-vue3';
 import FileLinksListVue from '../Components/FileLinksList.vue';
 import ContextMenuVue from '../Components/ContextMenu.vue';
 import FileDatabase from '../FileDatabase';
-
-//TODO:lang="ts"を指定してhrefにroute('~~')を指定すると、メソッドが存在しないとエラーを吐かれる
-//->@types/ziggy.jsをnpm includeしたら動くようにはなったけどvscodeはエラーを収めてくれない
+import route from 'ziggy-js';
 
 const filedatabase = reactive(new FileDatabase());
 const contextmenu_props = reactive<ContextMenuProps>({
@@ -18,15 +16,20 @@ const contextmenu_props = reactive<ContextMenuProps>({
 });
 //編集中のファイル　ないならばundefined
 const editing_fileid = ref<number|undefined>(undefined);
+//表示中の、Cookieに保存されたデータ　ないならばundefined
+const showing_cookie = ref<CookiedFileData|undefined>(undefined);
 const textareaDisable = computed(() => {
-    return (editing_fileid.value === undefined);
+    return (editing_fileid.value === undefined && showing_cookie.value === undefined);
 });
-const editing_filetext = computed(() => {
+const textarea_text = computed(() => {
     if(editing_fileid.value !== undefined){
         const text = filedatabase.getFileText(editing_fileid.value);
         if(text !== undefined){
             return text;
         }
+    }
+    if(showing_cookie.value !== undefined){
+        return showing_cookie.value.text;
     }
     return '';
 });
@@ -51,6 +54,12 @@ const bodyclick_handler = () => {
 const fileclick_handler = (id:number) => {
     filedatabase.onFileSelect(id);
     editing_fileid.value = id;
+    showing_cookie.value = undefined;
+};
+
+const cookieclick_handler = (data:CookiedFileData) => {
+    editing_fileid.value = undefined;
+    showing_cookie.value = data;
 };
 
 const filerightclick_handler = (id:number,clientx:number,clienty:number) => {
@@ -133,13 +142,14 @@ function synchronize(){
     //TODO:現在編集中のファイルidをsynchronizeに渡し、新しいidを返させる
     filedatabase.synchronize();
 }
+
 </script>
 
 <template>
     <Head title="編集"/>
     <div id="syncoverlayer" v-if="filedatabase.is_syncing || filedatabase.error_occured">
         <p v-if="filedatabase.error_occured" class="position-absolute top-50 start-50 translate-middle">エラーが発生しました<br/>再読み込みを行なってください</p>
-        <p v-if="filedatabase.is_syncing" class="position-absolute top-50 start-50 translate-middle">同期中...</p>
+        <p v-if="filedatabase.is_syncing && !filedatabase.error_occured" class="position-absolute top-50 start-50 translate-middle">同期中...</p>
     </div>
     <ContextMenuVue :items="contextmenu_props.items" :clientx="contextmenu_props.clientx" :clienty="contextmenu_props.clienty"/>
     <MyeditorLayout @both-click="bodyclick_handler">
@@ -148,12 +158,13 @@ function synchronize(){
             <button type="button" class="btn btn-sm btn-outline-primary m-1"><Link :href="route('logout')" method="post" as="button">ログアウト</Link></button>
         </template>
         <template v-slot:default >
-        <FileLinksListVue :files="filedatabase.files" :current_id="editing_fileid!==undefined?editing_fileid:-1"
+        <FileLinksListVue :files="filedatabase.files" :current_id="editing_fileid!==undefined?editing_fileid:-1" :cookied="filedatabase.cookied_datas"
             @file-click="fileclick_handler"
+            @cookie-click="cookieclick_handler"
             @file-right-click="filerightclick_handler"
             @right-click="listrightclick_handler"/>
             <div class="col-9 float-end" style="background-color:blue;height:100%">
-                <textarea id="edittextarea" :disabled="textareaDisable" @change="edittextarea_change" :value="editing_filetext"></textarea>
+                <textarea id="edittextarea" :disabled="textareaDisable" @change="edittextarea_change" :value="textarea_text"></textarea>
             </div>
         </template>
     </MyeditorLayout>
