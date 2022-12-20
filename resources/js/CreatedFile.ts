@@ -1,6 +1,7 @@
 import FetchedFileData from "./FetchedFileData";
 import FileData from "./FileData";
-import FileManager from "./FileManager";
+import FileDatabase from "./FileDatabase";
+import NormalFileData from "./NormalFileData";
 
 export default class CreatedFileData extends FileData{
     private _text = '';
@@ -16,8 +17,8 @@ export default class CreatedFileData extends FileData{
     public set name(newname:string){
         this._name = newname;
     }
-   constructor(id:number,name:string,filemanager:FileManager){
-        super(id,name,filemanager);
+   constructor(id:number,name:string,filedatabase:FileDatabase){
+        super(id,name,filedatabase);
     }
     public textareaDisable(){
         return false;
@@ -28,20 +29,16 @@ export default class CreatedFileData extends FileData{
     public onSelect(){
         return undefined;
     }
-    public onDelete(): void {
-        this.filemanager.deleteFileData(this.id);
+    public onDelete(){
+        return undefined;
     }
     public onSync(){
-        return this.filemanager.sendAjaxData<{name:string,text:string},{success:boolean,id:number}>(
-            '/rest','post',{name:this._name,text:this._text},(res)=>{
-            if(res.success){
-                this.filemanager.changeFileData(res.id,new FetchedFileData(res.id,this._name,this._text,this.filemanager));
-                if(this.filemanager.current_fileid === this.id){
-                    this.filemanager.current_fileid = res.id;
+        return this.filedatabase.sendAjaxData<{name:string,text:string},{success:boolean,id:number}>('/rest','post',{name:this._name,text:this.text})
+            .then(res => {
+                if(res.success){
+                    return new NormalFileData(res.id,this._name,this.text,this.filedatabase);
                 }
-                this.filemanager.deleteFileData(this.id);
-            }
-        });
+            });
 
     }
 }

@@ -1,32 +1,44 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/inertia-vue3';
 import MyeditorLayout from '@/Layouts/MyeditorLayout.vue';
-import { computed, reactive, ref, onMounted, DefineComponent, toRef } from 'vue';
+import { computed, reactive, ref, onMounted, DefineComponent, toRef, watchEffect } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
 import FileLinksListVue from '../Components/FileLinksList.vue';
 import ContextMenuVue from '../Components/ContextMenu.vue';
-import FileManager from '../FileManager';
+import FileDatabase from '../FileDatabase';
 
 //TODO:lang="ts"を指定してhrefにroute('~~')を指定すると、メソッドが存在しないとエラーを吐かれる
 //->@types/ziggy.jsをnpm includeしたら動くようにはなったけどvscodeはエラーを収めてくれない
 
-const filemanager = reactive(new FileManager());
+const filedatabase = reactive(new FileDatabase());
 const contextmenu_props = reactive<ContextMenuProps>({
     items:[],
     clientx:0,
     clienty:0,
 });
-const current_filetext = computed(() => filemanager.getCurrentFile().text);
-const textareaDisable = computed(() => filemanager.getCurrentFile().textareaDisable());
-
-onMounted(() => {
-    filemanager.setCSRFToken($('meta[name="csrf-token"]').attr('content') as string);
-    filemanager.fetchAllandBlock();
+//編集中のファイル　ないならばundefined
+const editing_fileid = ref<number|undefined>(undefined);
+const textareaDisable = computed(() => {
+    return (editing_fileid.value === undefined);
+});
+const editing_filetext = computed(() => {
+    if(editing_fileid.value !== undefined){
+        const text = filedatabase.getFileText(editing_fileid.value);
+        if(text !== undefined){
+            return text;
+        }
+    }
+    return '';
 });
 
-const edittextarea_input = (e:Event) => {
-    if(e.target instanceof HTMLTextAreaElement){
-        filemanager.getCurrentFile().text = e.target.value;
+onMounted(() => {
+    filedatabase.setCSRFToken($('meta[name="csrf-token"]').attr('content') as string);
+    filedatabase.fetchAllandBlock();
+});
+
+const edittextarea_change = (e:Event) => {
+    if(editing_fileid.value !== undefined && e.target instanceof HTMLTextAreaElement){
+        filedatabase.onTextareaChange(editing_fileid.value,e.target.value);
     }
 };
 
@@ -37,7 +49,8 @@ const bodyclick_handler = () => {
 //TODO:イベントハンドラにchangeCurrentFileToを直渡しすると、filemanager.fetchedがundefinedになっていると怒られる
 //ラムダで包んで渡すと怒られない thisが悪さをしている?
 const fileclick_handler = (id:number) => {
-    filemanager.changeCurrentFileTo(id);
+    filedatabase.onFileSelect(id);
+    editing_fileid.value = id;
 };
 
 const filerightclick_handler = (id:number,clientx:number,clienty:number) => {
@@ -45,13 +58,13 @@ const filerightclick_handler = (id:number,clientx:number,clienty:number) => {
         {
             name:'ファイル名変更',
             action:() => {
-                changeFileName(id);
+                onChangeFileName(id);
             }
         },
         {
             name:'ファイル削除',
             action:() => {
-                deleteFile(id);
+                onDeleteFile(id);
             }
         },
     ],clientx,clienty);
@@ -61,7 +74,7 @@ const listrightclick_handler = (clientx:number,clienty:number) => {
     changeContextMenu([
         {
             name:'新規作成',
-            action:createNewFile,
+            action:onCreateNewFile,
         },
         {
             name:'同期',
@@ -77,32 +90,56 @@ function changeContextMenu(items:Array<{name:string,action:()=>void}> = [],x:num
     contextmenu_props.clienty = y;
 }
 
-function changeFileName(id:number){
+function onChangeFileName(id:number){
     changeContextMenu();
-    filemanager.onChangeFileName(id);
+    let filename = prompt('新しいファイル名を入力してください。');
+    while(filename !== null){
+        if(filedatabase.changeFileName(id,filename)){
+            break;
+        }else{
+            filename = prompt('ファイル名が重複しています。別のファイル名を入力してください。');
+        }
+    }
 }
 
-function deleteFile(id:number){
+function onDeleteFile(id:number){
     changeContextMenu();
-    filemanager.onDeleteFile(id);
+    const name = filedatabase.getFileName(id) as string;
+    const conf = confirm(`本当にファイル「${name}」を削除しますか?`);
+    if(!conf){
+        return;
+    }
+    if(id === editing_fileid.value){
+        editing_fileid.value = undefined;
+    }
+    filedatabase.deleteFile(id);
 }
 
-function createNewFile(){
+function onCreateNewFile(){
     changeContextMenu();
-    filemanager.onCreateFile();
+    let filename = prompt('新しく作成するファイルの名前を入力してください。');
+    while(filename !== null){
+        if(filedatabase.createFile(filename)){
+            break;
+        }else{
+            filename = prompt('ファイル名が重複しています。別のファイル名を入力してください。');
+        }
+    }
 }
 
 function synchronize(){
     changeContextMenu();
-    filemanager.synchronize();
+    editing_fileid.value = undefined;
+    //TODO:現在編集中のファイルidをsynchronizeに渡し、新しいidを返させる
+    filedatabase.synchronize();
 }
 </script>
 
 <template>
     <Head title="編集"/>
-    <div id="syncoverlayer" v-if="filemanager.is_syncing || filemanager.error_occured">
-        <p v-if="filemanager.error_occured" class="position-absolute top-50 start-50 translate-middle">エラーが発生しました<br/>再読み込みを行なってください</p>
-        <p v-if="filemanager.is_syncing" class="position-absolute top-50 start-50 translate-middle">同期中...</p>
+    <div id="syncoverlayer" v-if="filedatabase.is_syncing || filedatabase.error_occured">
+        <p v-if="filedatabase.error_occured" class="position-absolute top-50 start-50 translate-middle">エラーが発生しました<br/>再読み込みを行なってください</p>
+        <p v-if="filedatabase.is_syncing" class="position-absolute top-50 start-50 translate-middle">同期中...</p>
     </div>
     <ContextMenuVue :items="contextmenu_props.items" :clientx="contextmenu_props.clientx" :clienty="contextmenu_props.clienty"/>
     <MyeditorLayout @both-click="bodyclick_handler">
@@ -111,12 +148,12 @@ function synchronize(){
             <button type="button" class="btn btn-sm btn-outline-primary m-1"><Link :href="route('logout')" method="post" as="button">ログアウト</Link></button>
         </template>
         <template v-slot:default >
-        <FileLinksListVue :files="filemanager.files" :current_id="filemanager.current_fileid"
+        <FileLinksListVue :files="filedatabase.files" :current_id="editing_fileid!==undefined?editing_fileid:-1"
             @file-click="fileclick_handler"
             @file-right-click="filerightclick_handler"
             @right-click="listrightclick_handler"/>
             <div class="col-9 float-end" style="background-color:blue;height:100%">
-                <textarea id="edittextarea" :disabled="textareaDisable" @input="edittextarea_input" :value="current_filetext"></textarea>
+                <textarea id="edittextarea" :disabled="textareaDisable" @change="edittextarea_change" :value="editing_filetext"></textarea>
             </div>
         </template>
     </MyeditorLayout>

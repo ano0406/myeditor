@@ -1,15 +1,14 @@
 import FileData from "./FileData";
-import FileManager from "./FileManager";
+import FileDatabase from "./FileDatabase";
 
 export default class DeletedFile extends FileData{
-    constructor(id:number,name:string,filemanager:FileManager){
-        super(id,name,filemanager);
+    constructor(id:number,name:string,filedatabase:FileDatabase){
+        super(id,name,filedatabase);
     }
     public onSync(){
-        return this.filemanager.sendAjaxData<{},{success:boolean}>(`/rest/${this.id}`,'delete',{},(res) => {
-            if(res.success){
-                this.filemanager.deleteFileData(this.id);
-            }
+        return this.filedatabase.sendAjaxData<{},{success:boolean}>(`/rest/${this.id}`,'delete',{})
+        .then(_ => {
+            return undefined;
         });
     }
 }
