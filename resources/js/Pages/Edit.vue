@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/inertia-vue3';
 import MyeditorLayout from '@/Layouts/MyeditorLayout.vue';
-import { computed, reactive, ref, onMounted } from 'vue';
+import { computed, reactive, ref, onMounted, onUnmounted } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
 import FileLinksListVue from '../Components/FileLinksList.vue';
 import ContextMenuVue from '../Components/ContextMenu.vue';
 import FileDatabase from '../FileDatabase';
 import route from 'ziggy-js';
+import { setCookie,getCookie } from 'typescript-cookie';
+
 
 const filedatabase = reactive(new FileDatabase());
 
@@ -28,6 +30,13 @@ const editing_fileid = ref<number|undefined>(undefined);
 //表示中の、Cookieに保存されたデータ　ないならばundefined
 const showing_cookie = ref<CookiedFileData|undefined>(undefined);
 
+//このタブが編集権を得た日時
+let tab_accessgrant_time:number;
+//別タブで編集ページが開かれているか否か
+const tab_block = ref<boolean>(false);
+//CookieをチェックするsetIntervalのid
+let cookie_check_intervalid:number;
+
 const textareaDisable = computed(() => {
     return (editing_fileid.value === undefined && showing_cookie.value === undefined);
 });
@@ -47,6 +56,18 @@ const textarea_text = computed(() => {
 
 onMounted(() => {
     filedatabase.onMounted($('meta[name="csrf-token"]').attr('content') as string);
+    tab_accessgrant_time = new Date().getTime();
+    setCookie('last-open',tab_accessgrant_time);
+    //TODO:browserオブジェクトをapp.jsから渡そうとしたが、そもそもapp.jsでbrowserがundefinedになっていた(app.jsから値を渡すこと自体はできた)
+    //vue-cookies-reactiveなどのpluginを用いてreactiveとしてcookieを見ようとしたが、そもそもpluginが導入できなかった
+    cookie_check_intervalid = setInterval(() => {
+        const lastopen_str = getCookie('last-open') as string;
+        const lastopen = Number(lastopen_str);
+        if(lastopen > tab_accessgrant_time){
+            tab_block.value = true;
+            clearInterval(cookie_check_intervalid);
+        }
+    },250);
 });
 
 const edittextarea_change = (e:Event) => {
@@ -143,14 +164,14 @@ function synchronize(){
     //TODO:現在編集中のファイルidをsynchronizeに渡し、新しいidを返させる
     filedatabase.synchronize();
 }
-
 </script>
 
 <template>
     <Head title="編集"/>
-    <div id="syncoverlayer" v-if="filedatabase.is_syncing || filedatabase.error_occured">
+    <div id="editblock" v-if="filedatabase.is_syncing || filedatabase.error_occured || tab_block">
         <p v-if="filedatabase.error_occured" class="position-absolute top-50 start-50 translate-middle">エラーが発生しました<br/>再読み込みを行なってください</p>
         <p v-if="filedatabase.is_syncing && !filedatabase.error_occured" class="position-absolute top-50 start-50 translate-middle">同期中...</p>
+        <p v-if="tab_block" class="position-absolute top-50 start-50 translate-middle">別のタブで編集ページが開かれています<br/>編集を再開するにはページをリロードしてください</p>
     </div>
     <ContextMenuVue :items="contextmenu_props.items" :clientx="contextmenu_props.clientx" :clienty="contextmenu_props.clienty"/>
     <MyeditorLayout @both-click="bodyclick_handler">
@@ -172,7 +193,7 @@ function synchronize(){
 </template>
 
 <style>
-#syncoverlayer{
+#editblock{
     position: absolute;
     width: 100vw;
     height: 100vh;
