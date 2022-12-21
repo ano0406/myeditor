@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+use Illuminate\Support\Facades\Log;
+
 class AuthenticatedSessionController extends Controller
 {
     /**
@@ -36,6 +38,10 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        //他デバイスからのログイン状態を切る
+        //TODO:おそらくこれで行けてるんだけど、テストサーバーの外部への公開方法が分からないからテストできない......
+        Auth::logoutOtherDevices($request->input('password'));
 
         return redirect()->intended(RouteServiceProvider::HOME);
     }
