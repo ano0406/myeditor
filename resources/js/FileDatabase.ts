@@ -162,6 +162,9 @@ export default class FileDatabase{
             }
             this._is_syncing = false;
         });
+        /*this.sendAjaxData<{tags:Array<string>},{}>('/rest/3','put',{
+            tags:['tag2','tag4'],
+        });*/
     }
     //「指定urlにgetを送り、成功時ResponseData型のレスポンスを受け取るresolveを実行する」というPromiseを返す
     //全promiseが完了するまで、ユーザー入力はブロックされる
