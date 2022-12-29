@@ -10,7 +10,7 @@ export default class CreatedFileData extends FileData{
         return this._name;
     }
     constructor(id:number,name:string,io:IOInterface){
-        super(id,name,io);
+        super(id,name,[],io);
         this.updateCookie();
     }
     public fileLinkDisplayName():string|undefined{
@@ -32,11 +32,20 @@ export default class CreatedFileData extends FileData{
         return undefined;
     }
     public onSync(){
-        return this.io.sendAjaxData<{name:string,text:string},{success:boolean,id:number}>('/rest','post',{name:this._name,text:this.text})
+        const tags:Array<string> = [];
+        this._tags.forEach((tag) => {
+            tags.push(tag);
+        });
+        const data = {
+            name:this._name,
+            text:this._text,
+            tags,
+        };
+        return this.io.sendAjaxData<{name:string,text:string,tags:Array<string>},{success:boolean,id:number}>('/rest','post',data)
             .then(res => {
                 if(res.success){
                     this.io.removeCookie(this.id);
-                    return new NormalFileData(res.id,this._name,this.text,this.io);
+                    return new NormalFileData(res.id,this._name,this.text,tags,this.io);
                 }
             });
     }
@@ -45,6 +54,18 @@ export default class CreatedFileData extends FileData{
             itemname:`作成:${this.name}`,
             openable:true,
             text:'',
+            tags:this._tags,
         });
+    }
+    public addTag(tag:string){
+        if(this._tags.find((t) => t===tag) === undefined){
+            this._tags.push(tag);
+        }
+    }
+    public deleteTag(tag:string){
+        const ind = this._tags.findIndex((t) => t===tag);
+        if(ind !== -1){
+            this._tags.splice(ind,1);
+        }
     }
 }

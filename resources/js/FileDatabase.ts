@@ -34,6 +34,9 @@ export default class FileDatabase{
     public getFileName(id:number):string|undefined{
         return this.files.get(id)?.name;
     }
+    public getFileTags(id:number):ReadonlyArray<string>|undefined{
+        return this.files.get(id)?.tags;
+    }
     public getFileLinksDatas(){
         const arr = new Array<FileLinkData>();
         for(const file of this.files.values()){
@@ -64,6 +67,19 @@ export default class FileDatabase{
                     this._is_syncing = false;
                 });
             }
+        }
+    }
+    //タグを削除する時呼び出す
+    public onTagDelete(id:number,tag:string){
+        const file = this.files.get(id);
+        if(file !== undefined){
+            file.deleteTag(tag);
+        }
+    }
+    public onTagAdd(id:number,tag:string){
+        const file = this.files.get(id);
+        if(file !== undefined){
+            file.addTag(tag);
         }
     }
     //ファイルの名前を変更する
@@ -144,10 +160,10 @@ export default class FileDatabase{
     //ユーザー操作をブロックし、サーバーからファイルを取り出し、client_filesをセットする
     private fetchAllandBlock(){
         this._is_syncing = true;
-        this.sendAjaxGet<Array<{id:number,name:string}>>('/rest')
+        this.sendAjaxGet<Array<{id:number,name:string,tags:Array<string>}>>('/rest')
         .then(res => {
-            for(const {id,name} of res){
-                this.files.set(id,new NormalFileData(id,name,undefined,this.getIOInterface()));
+            for(const {id,name,tags} of res){
+                this.files.set(id,new NormalFileData(id,name,undefined,tags,this.getIOInterface()));
                 this.used_filenames.add(name);
             }
             const cookied_ids_org = getCookie('cookieing_files');
@@ -162,9 +178,6 @@ export default class FileDatabase{
             }
             this._is_syncing = false;
         });
-        /*this.sendAjaxData<{tags:Array<string>},{}>('/rest/3','put',{
-            tags:['tag2','tag4'],
-        });*/
     }
     //「指定urlにgetを送り、成功時ResponseData型のレスポンスを受け取るresolveを実行する」というPromiseを返す
     //全promiseが完了するまで、ユーザー入力はブロックされる

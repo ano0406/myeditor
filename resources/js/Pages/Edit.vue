@@ -37,8 +37,8 @@ const tab_block = ref<boolean>(false);
 //CookieをチェックするsetIntervalのid
 let cookie_check_intervalid:number;
 
-const textareaDisable = computed(() => {
-    return (editing_fileid.value === undefined && showing_cookie.value === undefined);
+const textareaAvailable = computed(() => {
+    return (editing_fileid.value !== undefined || showing_cookie.value !== undefined);
 });
 
 const textarea_text = computed(() => {
@@ -52,6 +52,16 @@ const textarea_text = computed(() => {
         return showing_cookie.value.text;
     }
     return '';
+});
+
+const currentfile_tags = computed(() => {
+    let ret:ReadonlyArray<string> = [];
+    if(editing_fileid.value !== undefined){
+        ret = filedatabase.getFileTags(editing_fileid.value) as ReadonlyArray<string>;
+    }else if(showing_cookie.value !== undefined){
+        ret = showing_cookie.value.tags as string[];
+    }
+    return ret;
 });
 
 onMounted(() => {
@@ -121,6 +131,19 @@ const listrightclick_handler = (clientx:number,clienty:number) => {
     ],clientx,clienty);
 };
 
+const tagrightclick_handler = (tag:string,clientx:number,clienty:number) => {
+    if(editing_fileid.value !== undefined){
+        changeContextMenu([
+            {
+                name:'タグ削除',
+                action:() => {
+                    onTagDelete(tag);
+                },
+            },
+        ],clientx,clienty);
+    }
+};
+
 function onChangeFileName(id:number){
     changeContextMenu();
     let filename = prompt('新しいファイル名を入力してください。');
@@ -158,6 +181,20 @@ function onCreateNewFile(){
     }
 }
 
+function onTagDelete(tag:string){
+    changeContextMenu();
+    filedatabase.onTagDelete(editing_fileid.value as number,tag);
+}
+
+function onTagAdd(){
+    if(editing_fileid.value !== undefined){
+        let newtag = prompt('新しく追加するタグを入力してください');
+        if(newtag !== null){
+            filedatabase.onTagAdd(editing_fileid.value as number,newtag);
+        }
+    }
+}
+
 function synchronize(){
     changeContextMenu();
     editing_fileid.value = undefined;
@@ -185,8 +222,14 @@ function synchronize(){
             @cookie-click="cookieclick_handler"
             @file-right-click="filerightclick_handler"
             @right-click="listrightclick_handler"/>
-            <div class="col-9 float-end" style="background-color:blue;height:100%">
-                <textarea id="edittextarea" :disabled="textareaDisable" @change="edittextarea_change" :value="textarea_text"></textarea>
+            <div id="editarea" class="col-9 float-end" style="height:100%" v-show="textareaAvailable">
+                <div id="tagsdisplay" class="container">
+                    <template v-for="tag of currentfile_tags">
+                        <button type="button" class="btn btn-outline-secondary m-2" @contextmenu.stop.prevent="(e:MouseEvent) => tagrightclick_handler(tag,e.clientX,e.clientY)">{{tag}}</button>
+                    </template>
+                    <button type="button" class="btn btn-outline-secondary m-2" @click="onTagAdd">+タグを追加</button>
+                </div>
+                <textarea id="edittextarea" @change="edittextarea_change" :value="textarea_text"></textarea>
             </div>
         </template>
     </MyeditorLayout>
@@ -199,8 +242,19 @@ function synchronize(){
     height: 100vh;
     background-color: rgba(128, 128, 128, 0.5);
 }
+
+#editarea{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+}
+
+#tagsdisplay{
+    width:100%;
+}
+
 #edittextarea{
     width:100%;
-    height:100%;
+    flex-grow:1;
 }
 </style>

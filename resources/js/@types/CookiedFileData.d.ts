@@ -6,4 +6,6 @@ type CookiedFileData = {
     readonly openable:boolean;
     //textareaで開いたとき表示するテキスト(openableがtrueのときのみ参照される)
     readonly text?:string;
+    //保存時点で持っていたタグ(openableがtrueのときのみ参照される)
+    readonly tags?:ReadonlyArray<string>;
 };

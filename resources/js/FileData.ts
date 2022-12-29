@@ -8,10 +8,15 @@ export default class FileData{
     public get name(){
         return this._name;
     }
+    protected _tags:Array<string>;
+    public get tags(){
+        return this._tags as ReadonlyArray<string>;
+    }
     protected io:IOInterface;
-    constructor(id:number,name:string,io:IOInterface){
+    constructor(id:number,name:string,tags:Array<string>,io:IOInterface){
         this.id = id;
         this._name = name;
+        this._tags = tags;
         this.io = io;
     }
     //FileLinkでの表示名を返す 表示しないならばundefinedを返す
@@ -40,5 +45,9 @@ export default class FileData{
     //非同期処理を行わない場合、undefinedを返す
     public onSync():undefined|Promise<FileData|undefined>{
         return undefined;
+    }
+    public addTag(_:string){
+    }
+    public deleteTag(_:string){
     }
 }

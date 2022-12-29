@@ -9,15 +9,16 @@ export default class NormalFileData extends FileData{
     }
     private edited = false;
     private renamed = false;
-    constructor(id:number,name:string,text:string|undefined,io:IOInterface){
-        super(id,name,io);
+    private tagaltered = false;
+    constructor(id:number,name:string,text:string|undefined,tags:Array<string>,io:IOInterface){
+        super(id,name,tags,io);
         this._text = text;
     }
     public get name(){
         return this._name;
     }
     public fileLinkDisplayName(){
-        return (this.edited?'*':'')+this._name+(this.renamed?' (名前変更済み)':'');
+        return (this.edited?'*':'')+this._name+(this.renamed||this.tagaltered?' ':'')+(this.renamed?'(名前変更済み)':'')+(this.tagaltered?'(タグ変更済み)':'');
     }
     public onSelect(){
         if(this._text === undefined){
@@ -43,18 +44,25 @@ export default class NormalFileData extends FileData{
         return new DeletedFile(this.id,this.name,this.io);
     }
     public onSync(){
-        if(this.edited || this.renamed){
-            const data:{name?:string,text?:string} = {};
+        if(this.edited || this.renamed || this.tagaltered){
+            const data:{name?:string,text?:string,tags?:Array<string>} = {};
             if(this.edited){
                 data.text = this.text;
             }
             if(this.renamed){
                 data.name = this.name;
             }
-            return this.io.sendAjaxData<{name?:string,text?:string},{success:boolean}>(`/rest/${this.id}`,'put',data)
+            if(this.tagaltered){
+                data.tags = [];
+                this._tags.forEach((tag) => {
+                    data.tags?.push(tag);
+                });
+            }
+            return this.io.sendAjaxData<{name?:string,text?:string,tag?:Array<string>},{success:boolean}>(`/rest/${this.id}`,'put',data)
             .then(_ => {
                 this.edited = false;
                 this.renamed = false;
+                this.tagaltered = false;
                 this.io.removeCookie(this.id);
                 return this;
             });
@@ -63,23 +71,60 @@ export default class NormalFileData extends FileData{
         }
     }
     private updateCookie(){
-        if(this.renamed && this.edited){
+        let itemname = '';
+        let openable = false;
+        let text = '';
+        let tags:Array<string> = [];
+        if(this.edited){
+            itemname += '編集';
+        }
+        if(this.renamed){
+            if(itemname !== ''){
+                itemname += '/';
+            }
+            itemname += '改名';
+        }
+        if(this.tagaltered){
+            if(itemname !== ''){
+                itemname += '/';
+            }
+            itemname += 'タグ変更';
+        }
+        itemname += `:${this._name}`;
+        if(this.edited || this.tagaltered){
+            openable = true;
+            if(this._text !== undefined){
+                text = this._text;
+            }
+            tags = this._tags;
+        }
+        if(!openable){
             this.io.saveCookie(this.id,{
-                itemname:`改名と編集:${this.name}`,
-                openable:true,
-                text:this._text,
+                itemname,
+                openable,
             });
-        }else if(this.renamed && !this.edited){
+        }else{
             this.io.saveCookie(this.id,{
-                itemname:`改名:${this.name}`,
-                openable:false,
+                itemname,
+                openable,
+                text,
+                tags,
             });
-        }else if(!this.renamed && this.edited){
-            this.io.saveCookie(this.id,{
-                itemname:`編集:${this.name}`,
-                openable:true,
-                text:this._text,
-            });
+        }
+    }
+    public addTag(tag:string){
+        if(this._tags.find((t) => t===tag) === undefined){
+            this.tagaltered = true;
+            this._tags.push(tag);
+            this.updateCookie();
+        }
+    }
+    public deleteTag(tag:string){
+        const ind = this._tags.findIndex((t) => t===tag);
+        if(ind !== -1){
+            this.tagaltered = true;
+            this._tags.splice(ind,1);
+            this.updateCookie();
         }
     }
 }
