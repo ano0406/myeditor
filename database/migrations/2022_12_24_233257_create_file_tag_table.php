@@ -13,12 +13,11 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('files', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained();
-            $table->string('name');
-            $table->text('text');
+        Schema::create('file_tag', function (Blueprint $table) {
+            $table->foreignId('file_id')->constrained();
+            $table->foreignId('tag_id')->constrained();
             $table->timestamps();
+            $table->unique(['file_id','tag_id']);
         });
     }
 
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('files');
+        Schema::dropIfExists('file_tag');
     }
 };
