@@ -9,7 +9,7 @@ export default class DeletedFile extends FileData{
         });
     }
     public onSync(){
-        return this.io.sendAjaxData<{},{success:boolean}>(`/rest/${this.id}`,'delete',{})
+        return this.io.sendAjaxData<{},{}>(`/rest/${this.id}`,'delete',{})
         .then(_ => {
             this.io.removeCookie(this.id);
             return undefined;

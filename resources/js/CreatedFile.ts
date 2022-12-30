@@ -41,12 +41,10 @@ export default class CreatedFileData extends FileData{
             text:this._text,
             tags,
         };
-        return this.io.sendAjaxData<{name:string,text:string,tags:Array<string>},{success:boolean,id:number}>('/rest','post',data)
+        return this.io.sendAjaxData<{name:string,text:string,tags:Array<string>},{id:number}>('/rest','post',data)
             .then(res => {
-                if(res.success){
-                    this.io.removeCookie(this.id);
-                    return new NormalFileData(res.id,this._name,this.text,tags,this.io);
-                }
+                this.io.removeCookie(this.id);
+                return new NormalFileData(res.id,this._name,this.text,tags,this.io);
             });
     }
     private updateCookie(){

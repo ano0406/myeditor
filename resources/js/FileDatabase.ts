@@ -125,7 +125,7 @@ export default class FileDatabase{
     }
     //ファイル全体の同期を行う
     public synchronize():Promise<void>{
-        const fileid_arr = new Array<number>;
+        const fileid_arr = new Array<number>();
         const promise_arr = new Array<Promise<undefined|FileData>>();
         for(const file of this.files.values()){
             const fileret = file.onSync();
