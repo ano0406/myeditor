@@ -58,7 +58,7 @@ export default class NormalFileData extends FileData{
                     data.tags?.push(tag);
                 });
             }
-            return this.io.sendAjaxData<{name?:string,text?:string,tag?:Array<string>},{success:boolean}>(`/rest/${this.id}`,'put',data)
+            return this.io.sendAjaxData<{name?:string,text?:string,tag?:Array<string>},{}>(`/rest/${this.id}`,'put',data)
             .then(_ => {
                 this.edited = false;
                 this.renamed = false;
