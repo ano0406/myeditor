@@ -14,7 +14,6 @@ use Response;
 
 class FilesRestController extends Controller
 {
-    const datetime_format = 'Y-m-d h:i:s';
     /**
      * 指定されたユーザーが作成した全ファイルの(ファイルid,ファイル名,タグ,作成日,最終更新日)の組をjsonで返す
      *
@@ -23,17 +22,11 @@ class FilesRestController extends Controller
     public function index()
     {
         $userid = Auth::user()->id;
-        $files = User::with('files.tags')->find($userid)->files()->select('id','name','created_at','updated_at')->get();
+        $files = User::with('files.tags')->find($userid)->files()->get();
         $ret = [];
         foreach($files as $file)
         {
-            $ret[] = [
-                'id' => $file->id,
-                'name' => $file->name,
-                'tags' => $file->tagNamesArray(),
-                'created' => $file->formartedCreatedTime(),
-                'updated' => $file->formartedUpdatedTime(),
-            ];
+            $ret[] = $file->getFileDataArray([File::data_id,File::data_name,File::data_tags,File::data_created,File::data_updated]);
         }
         return response()->json($ret);
     }
@@ -57,10 +50,7 @@ class FilesRestController extends Controller
         ]);
         $newtags = $request->input('tags');
         $file->updateTags($newtags);
-        return response()->json([
-            'id' => $file->id,
-            'created' => $file->formartedCreatedTime(),
-        ]);
+        return response()->json($file->getFileDataArray([File::data_id,File::data_created,File::data_updated]));
     }
 
     /**
@@ -75,13 +65,7 @@ class FilesRestController extends Controller
         $user = Auth::user();
         $file = $user->files()->find($id);
         if($file != null){
-            return response()->json([
-                'name' => $file->name,
-                'text' => $file->text,
-                'tags' => $file->tagNamesArray(),
-                'created' => $file->formartedCreatedTime(),
-                'updated' => $file->formartedUpdatedTime(),
-            ]);
+            return response()->json($file->getFileDataArray([File::data_id,File::data_name,File::data_text,File::data_tags,File::data_created,File::data_updated]));
         }else{
             abort(400);
         }
@@ -116,9 +100,7 @@ class FilesRestController extends Controller
         if($tags != null){
             $file->updateTags($tags);
         }
-        return response()->json([
-            'updated' => $file->formartedUpdatedTime(),
-        ]);
+        return response()->json(File::getFileDataArray([File::data_updated]));
     }
 
     /**

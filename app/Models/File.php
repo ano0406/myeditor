@@ -14,6 +14,12 @@ class File extends Model
     use HasFactory;
     protected $guarded = ['id','created_at','updated_at'];
     const datetime_format = 'Y-m-d h:i:s';
+    const data_id = 'id';
+    const data_name = 'name';
+    const data_text = 'text';
+    const data_tags = 'tags';
+    const data_created = 'created';
+    const data_updated = 'updated';
 
     public function user()
     {
@@ -46,8 +52,32 @@ class File extends Model
         $this->tags()->attach($addtags);
     }
 
+    public function getFileDataArray(array $arr):array
+    {
+        $ret = [];
+        if(in_array(self::data_id,$arr)){
+            $ret[self::data_id] = $this->id;
+        }
+        if(in_array(self::data_name,$arr)){
+            $ret[self::data_name] = $this->name;
+        }
+        if(in_array(self::data_text,$arr)){
+            $ret[self::data_text] = $this->text;
+        }
+        if(in_array(self::data_tags,$arr)){
+            $ret[self::data_tags] = $this->tagNamesArray();
+        }
+        if(in_array(self::data_created,$arr)){
+            $ret[self::data_created] = $this->getFormartedCreated();
+        }
+        if(in_array(self::data_updated,$arr)){
+            $ret[self::data_updated] = $this->getFormartedUpdated();
+        }
+        return $ret;
+    }
+
     //このファイルのタグの配列を、文字列の配列として返す
-    public function tagNamesArray()
+    private function tagNamesArray()
     {
         $tags = $this->tags;
         $ret = [];
@@ -57,12 +87,12 @@ class File extends Model
         return $ret;
     }
 
-    public function formartedCreatedTime()
+    private function getFormartedCreated()
     {
         return $this->created_at->format(self::datetime_format);
     }
 
-    public function formartedUpdatedTime()
+    private function getFormartedUpdated()
     {
         return $this->updated_at->format(self::datetime_format);
     }
