@@ -14,22 +14,25 @@ use Response;
 
 class FilesRestController extends Controller
 {
+    const datetime_format = 'Y-m-d h:i:s';
     /**
-     * 指定されたユーザーが作成した全ファイルの(ファイルid,ファイル名)の組をjsonで返す
+     * 指定されたユーザーが作成した全ファイルの(ファイルid,ファイル名,タグ,作成日,最終更新日)の組をjsonで返す
      *
      * @return \Illuminate\Http\Response
      */
     public function index()
     {
         $userid = Auth::user()->id;
-        $files = User::with('files.tags')->find($userid)->files()->select('id','name')->get();
+        $files = User::with('files.tags')->find($userid)->files()->select('id','name','created_at','updated_at')->get();
         $ret = [];
         foreach($files as $file)
         {
-           $ret[] = [
+            $ret[] = [
                 'id' => $file->id,
                 'name' => $file->name,
                 'tags' => $file->tagNamesArray(),
+                'created' => $file->formartedCreatedTime(),
+                'updated' => $file->formartedUpdatedTime(),
             ];
         }
         return response()->json($ret);
@@ -37,7 +40,7 @@ class FilesRestController extends Controller
 
     /**
      * ファイルの作成 ファイル本文(name)とテキスト(text)、タグの配列(tags:Array<string>)をリクエストに含める
-     * 作成したファイルに割り当てられたidを返す(response:{id:number})
+     * 作成したファイルに割り当てられたidや作成日を返す(response:{id:number,created:datetime,updated:datetime})
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
@@ -56,11 +59,12 @@ class FilesRestController extends Controller
         $file->updateTags($newtags);
         return response()->json([
             'id' => $file->id,
+            'created' => $file->formartedCreatedTime(),
         ]);
     }
 
     /**
-     * ファイルidに対し、ユーザーが保持していればファイル名(name:string)とファイル本文(text:string)とタグ(tags:Array<string>)を、jsonで返す
+     * ファイルidに対し、ユーザーが保持していればファイル名(name:string)とファイル本文(text:string)とタグ(tags:Array<string>)と作成日(created:datetime)と更新日(updated:datetime)を、jsonで返す
      * そうでなければ400を返す
      *
      * @param  int  $id
@@ -75,6 +79,8 @@ class FilesRestController extends Controller
                 'name' => $file->name,
                 'text' => $file->text,
                 'tags' => $file->tagNamesArray(),
+                'created' => $file->formartedCreatedTime(),
+                'updated' => $file->formartedUpdatedTime(),
             ]);
         }else{
             abort(400);
@@ -110,7 +116,9 @@ class FilesRestController extends Controller
         if($tags != null){
             $file->updateTags($tags);
         }
-        return response()->json([]);
+        return response()->json([
+            'updated' => $file->formartedUpdatedTime(),
+        ]);
     }
 
     /**

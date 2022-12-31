@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use DateTimeInterface;
 
 use Illuminate\Support\Facades\Log;
 
@@ -12,6 +13,7 @@ class File extends Model
 {
     use HasFactory;
     protected $guarded = ['id','created_at','updated_at'];
+    const datetime_format = 'Y-m-d h:i:s';
 
     public function user()
     {
@@ -53,5 +55,19 @@ class File extends Model
             $ret[] = $tag->name;
         }
         return $ret;
+    }
+
+    public function formartedCreatedTime()
+    {
+        return $this->created_at->format(self::datetime_format);
+    }
+
+    public function formartedUpdatedTime()
+    {
+        return $this->updated_at->format(self::datetime_format);
+    }
+
+    protected function serializeDate(DateTimeInterface $date){
+        return $date->format('Y-m-d h:i:s');
     }
 }
