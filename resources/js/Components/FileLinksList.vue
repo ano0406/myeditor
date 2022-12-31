@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref } from 'vue';
+import FileSorterVue from './FileSorter.vue';
 import FileLinkVue from './FileLink.vue';
 import CookieLinkVue from './CookieLink.vue';
 
@@ -21,20 +22,8 @@ const emit = defineEmits<{
     (event:'right-click',clientx:number,clienty:number):void;
 }>();
 
-//FileLinkVueのための配列を作る
-const createNameEditedArray = computed(() => {
-    //アルファベット順に並べる
-    const comp = (a:{name:string},b:{name:string}) => {
-        for(let i = 0;i < (a.name.length < b.name.length?a.name.length:b.name.length);i++){
-            if(a.name.charCodeAt(i) !== b.name.charCodeAt(i)){
-                return a.name.charCodeAt(i) - b.name.charCodeAt(i);
-            }
-        }
-        return a.name.length - b.name.length;
-    };
-    props.files.sort(comp);
-    return props.files;
-});
+//FileLinkVueはこの配列の順番で並べる
+const display_lists = ref<Array<FileLinkData>>([]);
 
 const fileclick_handler = (id:number) => {
     emit('file-click',id);
@@ -55,7 +44,8 @@ const rightclick_handler = (e:MouseEvent) => {
 
 <template>
     <div @contextmenu.stop.prevent="rightclick_handler" class="col-3 float-start" style="background-color: rgb(180, 180, 180); height:100%">
-        <ul v-for="obj in createNameEditedArray">
+        <FileSorterVue :files="files" @lists-array-change="(arr) => display_lists = arr"/>
+        <ul v-for="obj in display_lists">
             <FileLinkVue :data="obj" :opening="obj.id === currentId" @file-click="fileclick_handler" @file-right-click="filerightclick_handler"/>
         </ul>
         <template v-if="cookied.length > 0">
@@ -66,4 +56,4 @@ const rightclick_handler = (e:MouseEvent) => {
             </ul>
         </template>
      </div>
-</template>ß
+</template>

@@ -40,12 +40,10 @@ export default class FileDatabase{
     public getFileLinksDatas(){
         const arr = new Array<FileLinkData>();
         for(const file of this.files.values()){
-            if(file.fileLinkDisplayName() !== undefined)
-            arr.push({
-                id:file.id,
-                itemname:file.fileLinkDisplayName() as string,
-                name:file.name,
-            });
+            const data = file.getFileLinksData();
+            if(data !== undefined){
+                arr.push(data);
+            }
         }
         return arr;
     }
