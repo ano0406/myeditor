@@ -19,6 +19,21 @@ export default class FileData{
         this._tags = tags;
         this.io = io;
     }
+    public getFileLinksData():FileLinkData|undefined{
+        const itemname = this.fileLinkDisplayName();
+        if(itemname !== undefined){
+            return{
+                id:this.id,
+                itemname,
+                tags:this.tags,
+                key:{
+                    name:this.name,
+                }
+            }
+        }else{
+            return undefined;
+        }
+    }
     //FileLinkでの表示名を返す 表示しないならばundefinedを返す
     public fileLinkDisplayName():string|undefined{
         return undefined;
