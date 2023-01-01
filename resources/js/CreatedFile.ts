@@ -10,7 +10,7 @@ export default class CreatedFileData extends FileData{
         return this._name;
     }
     constructor(id:number,name:string,io:IOInterface){
-        super(id,name,[],io);
+        super(id,name,[],new Date(),new Date(),io);
         this.updateCookie();
     }
     public fileLinkDisplayName():string|undefined{
@@ -41,10 +41,10 @@ export default class CreatedFileData extends FileData{
             text:this._text,
             tags,
         };
-        return this.io.sendAjaxData<{name:string,text:string,tags:Array<string>},{id:number}>('/rest','post',data)
+        return this.io.sendAjaxData<{name:string,text:string,tags:Array<string>},{id:number,created:string,updated:string}>('/rest','post',data)
             .then(res => {
                 this.io.removeCookie(this.id);
-                return new NormalFileData(res.id,this._name,this.text,tags,this.io);
+                return new NormalFileData(res.id,this._name,this.text,tags,new Date(this.created),new Date(this.updated),this.io);
             });
     }
     private updateCookie(){

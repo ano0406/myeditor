@@ -158,10 +158,10 @@ export default class FileDatabase{
     //ユーザー操作をブロックし、サーバーからファイルを取り出し、client_filesをセットする
     private fetchAllandBlock(){
         this._is_syncing = true;
-        this.sendAjaxGet<Array<{id:number,name:string,tags:Array<string>}>>('/rest')
+        this.sendAjaxGet<Array<{id:number,name:string,tags:Array<string>,created:string,updated:string}>>('/rest')
         .then(res => {
-            for(const {id,name,tags} of res){
-                this.files.set(id,new NormalFileData(id,name,undefined,tags,this.getIOInterface()));
+            for(const {id,name,tags,created,updated} of res){
+                this.files.set(id,new NormalFileData(id,name,undefined,tags,new Date(created),new Date(updated),this.getIOInterface()));
                 this.used_filenames.add(name);
             }
             const cookied_ids_org = getCookie('cookieing_files');

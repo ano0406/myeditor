@@ -10,14 +10,14 @@ const emit = defineEmits<{
     (event:'unchecked',name:string):void;
 }>();
 
-let checked = true;
+let checked = false;
 
 onMounted(() => {
-    emit('checked',props.name);
+    emit('unchecked',props.name);
 });
 
 onUnmounted(() => {
-    emit('unchecked',props.name);
+    emit('checked',props.name);
 });
 
 function onChange(){
@@ -32,7 +32,7 @@ function onChange(){
 
 <template>
     <div class="form-check">
-        <input class="form-check-input" type="checkbox" @change="onChange" checked="true" :id="'checkbox_'+name" :key="'checkbox_'+name">
+        <input class="form-check-input" type="checkbox" @change="onChange" :id="'checkbox_'+name" :key="'checkbox_'+name">
         <label class="form-check-label" :for="'checkbox_'+name">
             {{ name }}
         </label>

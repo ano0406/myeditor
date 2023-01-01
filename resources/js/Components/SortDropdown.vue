@@ -16,6 +16,26 @@ function revDictOrderFunctor(a:FileLinkSortkey,b:FileLinkSortkey){
     return -dictOrder(a.name,b.name);
 }
 
+//作成日(古→新)
+function createdOrder(a:FileLinkSortkey,b:FileLinkSortkey){
+    return a.created.getTime()-b.created.getTime();
+}
+
+//作成日(新→古)
+function revCreatedOrder(a:FileLinkSortkey,b:FileLinkSortkey){
+    return -createdOrder(a,b);
+}
+
+//更新日(古→新)
+function updatedOrder(a:FileLinkSortkey,b:FileLinkSortkey){
+    return a.updated.getTime()-b.updated.getTime();
+}
+
+//更新日(新→古)
+function revUpdatedOrder(a:FileLinkSortkey,b:FileLinkSortkey){
+    return -updatedOrder(a,b);
+}
+
 //aとbを辞書順比較(sortのファンクタに指定)
 function dictOrder(a:string,b:string){
     for(let i = 0;i < (a.length < b.length?a.length:b.length);i++){
@@ -35,6 +55,10 @@ function dictOrder(a:string,b:string){
         <ul class="dropdown-menu" aria-labelledby="linklistSortDropdown">
             <li @click="onclick(dictOrderFunctor)">名前順(a→z)</li>
             <li @click="onclick(revDictOrderFunctor)">名前順(z→a)</li>
-        </ul>
+            <li @click="onclick(createdOrder)">作成日時順(古→新)</li>
+            <li @click="onclick(revCreatedOrder)">作成日時順(新→古)</li>
+            <li @click="onclick(updatedOrder)">更新日時順(古→新)</li>
+            <li @click="onclick(revUpdatedOrder)">更新日時順(新→古)</li>
+      </ul>
     </div>
 </template>

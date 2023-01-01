@@ -100,7 +100,7 @@ class FilesRestController extends Controller
         if($tags != null){
             $file->updateTags($tags);
         }
-        return response()->json(File::getFileDataArray([File::data_updated]));
+        return response()->json($file->getFileDataArray([File::data_updated]));
     }
 
     /**

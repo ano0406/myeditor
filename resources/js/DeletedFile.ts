@@ -1,8 +1,8 @@
 import FileData from "./FileData";
 
 export default class DeletedFile extends FileData{
-    constructor(id:number,name:string,io:IOInterface){
-        super(id,name,[],io);
+    constructor(id:number,name:string,created:Date,updated:Date,io:IOInterface){
+        super(id,name,[],created,updated,io);
         io.saveCookie(id,{
             itemname:`削除:${name}`,
             openable:false,

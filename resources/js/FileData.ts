@@ -12,11 +12,15 @@ export default class FileData{
     public get tags(){
         return this._tags as ReadonlyArray<string>;
     }
+    protected created:Date;
+    protected updated:Date;
     protected io:IOInterface;
-    constructor(id:number,name:string,tags:Array<string>,io:IOInterface){
+    constructor(id:number,name:string,tags:Array<string>,created:Date,updated:Date,io:IOInterface,){
         this.id = id;
         this._name = name;
         this._tags = tags;
+        this.created = created;
+        this.updated = updated;
         this.io = io;
     }
     public getFileLinksData():FileLinkData|undefined{
@@ -28,6 +32,8 @@ export default class FileData{
                 tags:this.tags,
                 key:{
                     name:this.name,
+                    created:this.created,
+                    updated:this.updated,
                 }
             }
         }else{

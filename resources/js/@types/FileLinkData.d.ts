@@ -1,6 +1,8 @@
 //ファイルのリンクをソートする際に用いるキー
 type FileLinkSortkey = {
     name:string;
+    created:Date;
+    updated:Date;
 }
 
 //FileLink.vueに渡す、表示のみに目的を絞ったデータ

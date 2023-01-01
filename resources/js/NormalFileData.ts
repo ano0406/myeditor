@@ -10,8 +10,8 @@ export default class NormalFileData extends FileData{
     private edited = false;
     private renamed = false;
     private tagaltered = false;
-    constructor(id:number,name:string,text:string|undefined,tags:Array<string>,io:IOInterface){
-        super(id,name,tags,io);
+    constructor(id:number,name:string,text:string|undefined,tags:Array<string>,created:Date,updated:Date,io:IOInterface){
+        super(id,name,tags,created,updated,io);
         this._text = text;
     }
     public get name(){
@@ -41,7 +41,7 @@ export default class NormalFileData extends FileData{
         this.updateCookie();
     }
     public onDelete(){
-        return new DeletedFile(this.id,this.name,this.io);
+        return new DeletedFile(this.id,this.name,this.created,this.updated,this.io);
     }
     public onSync(){
         if(this.edited || this.renamed || this.tagaltered){
@@ -58,11 +58,12 @@ export default class NormalFileData extends FileData{
                     data.tags?.push(tag);
                 });
             }
-            return this.io.sendAjaxData<{name?:string,text?:string,tag?:Array<string>},{}>(`/rest/${this.id}`,'put',data)
-            .then(_ => {
+            return this.io.sendAjaxData<{name?:string,text?:string,tag?:Array<string>},{updated:string}>(`/rest/${this.id}`,'put',data)
+            .then(({updated}) => {
                 this.edited = false;
                 this.renamed = false;
                 this.tagaltered = false;
+                this.updated = new Date(updated);
                 this.io.removeCookie(this.id);
                 return this;
             });
